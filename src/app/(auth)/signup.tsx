@@ -11,13 +11,8 @@ export default function SignupScreen() {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-
     const router = useRouter();
     const { signUp } = useAuth();
-
-    useEffect(() => {
-        router.push("/(auth)/onboarding");
-    }, [])
 
     const handleSignup = async () => {
         if (!email || !password) {
@@ -32,7 +27,9 @@ export default function SignupScreen() {
 
         try {
             await signUp(email, password);
+            router.push("/(auth)/onboarding");
         } catch (error) {
+            console.error("Signup error:", error);
             Alert.alert("Error", "Failed to sign up. Please try again.");
         } finally {
             setIsLoading(false)

@@ -4,6 +4,9 @@ import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase/client";
 import { useState } from "react";
+import { uploadProfileImage } from "@/lib/supabase/storage";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "expo-router";
 
 
 export default function OnboardingScreen() {
@@ -11,6 +14,8 @@ export default function OnboardingScreen() {
     const [username, setUsername] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [profileImage, setProfileImage] = useState<string | null>(null);
+    const { user, updateUser } = useAuth();
+    const router = useRouter();
 
 
     const pickImage = async () => {
@@ -73,22 +78,52 @@ export default function OnboardingScreen() {
 
         setIsLoading(true)
         try {
+            if (!user) {
+                throw new Error("User not authenticated");
+            }
             // Check if username exists
             const { data: existingUser } = await supabase
                 .from("profiles")
                 .select("id")
                 .eq("username", username)
+                .neq("id", user.id)
+                .single();
 
             if (existingUser) {
                 Alert.alert("Error", "This username is already taken. Please choose another one.")
                 setIsLoading(false)
                 return;
             }
+
+        // Upload profile image if available
+        let profileImageUrl: string | undefined;
+        if (profileImage) {
+            try {
+                profileImageUrl = await uploadProfileImage(user.id, profileImage);
+            }
+            catch (error) {
+                console.error("Error uploading profile image:", error);
+                Alert.alert("Warning", "Failed to upload profile image. Continuing without image.")
+                setIsLoading(false)
+                return;
+            }
+        }
+        // Update user profile
+        await updateUser({
+            name,
+            username,
+            profileImage: profileImageUrl,
+            onboardingCompleted: true,
+        });
+        router.replace("/(tabs)");
+
+
         } catch (error) {
             Alert.alert("Error", "Failed to complete the onboarding. Please try again.")
         } finally {
             setIsLoading(false)
         }
+    
     };
 
     return (

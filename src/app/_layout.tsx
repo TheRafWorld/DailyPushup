@@ -1,36 +1,51 @@
-import { AuthProvider } from "@/context/AuthContext";
-import { Stack, router } from "expo-router";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 
-export default function RootLayout() {
+function RouteGuard() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const segments = useSegments();
+
+  const inAuthGroup = segments[0] === "(auth)";
+  const inTabsGroup = segments[0] === "(tabs)";
 
   let isAuth = false;
   useEffect(() => {
-    if (!isAuth) {
-      // Redirect to the login page if the user is not authenticated
-      router.replace("/(auth)/login");
+    if (!user) {
+      if (!inAuthGroup) {
+        // Redirect to the login page if the user is not authenticated and not in the auth group
+        router.replace("/(auth)/login");
+      }
     } else {
-      // Redirect to the main app page if the user is authenticated
-      router.replace("/(tabs)");
+      if (!inTabsGroup) {
+        // Redirect to the main app page if the user is authenticated and not in the tabs group
+        router.replace("/(tabs)");
+      }
     }
-  }, []);
+  }, [user, segments, router]);
+  return (
+    <Stack screenOptions={{
+      headerShown: false,
+      headerStyle: {
+        backgroundColor: "#1E1E1E",
+      },
+      headerTintColor: "#fff",
+      headerTitleStyle: {
+        fontWeight: "bold",
+      },
+      animation: "fade_from_bottom",
+    }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(auth)" />
+    </Stack>
+  );
+}
 
+export default function RootLayout() {
   return (
     <AuthProvider>
-      <Stack screenOptions={{
-        headerShown: false,
-        headerStyle: {
-          backgroundColor: "#1E1E1E",
-        },
-        headerTintColor: "#fff",
-        headerTitleStyle: {
-          fontWeight: "bold",
-        },
-        animation: "fade_from_bottom",
-      }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(auth)" />
-      </Stack>
+      <RouteGuard />
     </AuthProvider>
   );
 }
